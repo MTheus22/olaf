@@ -1,0 +1,32 @@
+# Credenciais
+*.key
+*.pem
+*.json
+
+# Diretórios de dependência
+**/*.pyc
+
+# Arquivos de ambiente
+.env
+*.env
+
+# Arquivos de cache de editor
+.vscode/
+.idea/
+
+# Arquivos ocultos do sistema
+.DS_Store
+
+# Arquivos de imagem RAW
+*.ARW
+*.CR2
+*.CRW
+*.DCR
+*.DNG
+*.ERF
+*.MRW
+*.NEF
+*.ORF
+*.PEF
+*.RAF
+*.RAW
