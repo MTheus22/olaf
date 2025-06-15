@@ -94,11 +94,3 @@ python src/main.py drive --folder-id "ID_DA_PASTA_NO_DRIVE" --credentials "camin
 * `src/raw_service.py`: Serviço responsável por interagir com o ExifTool e extrair metadados brutos de um arquivo.
 * `src/data_frame_service.py`: Serviço que utiliza a biblioteca Pandas para receber os dados extraídos, ordená-los cronologicamente e preparar para a renomeação.
 * `src/drive_service.py`: Cliente original de baixo nível para a API do Google Drive, utilizado pelo `drive_source`.
-
-## Próximos Passos (Roadmap)
-
-* [ ] Adicionar uma Interface Gráfica (GUI) usando `Tkinter` ou `PyQt` para facilitar o uso por não-desenvolvedores.
-* [ ] Permitir a personalização do formato do novo nome do arquivo via parâmetros na CLI.
-* [ ] Criar um executável independente com `PyInstaller` para facilitar a distribuição.
-* [ ] Adicionar suporte para extrair e usar outros metadados na renomeação (ex: modelo da câmera, nome do fotógrafo).
-
