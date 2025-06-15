@@ -30,3 +30,6 @@
 *.PEF
 *.RAF
 *.RAW
+
+# Arquivos de log
+*.log

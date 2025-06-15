@@ -12,7 +12,7 @@ FOTOS_PATH="/mnt/c/Users/mathe/OneDrive - Instituto Brasileiro de Ensino, Desenv
 echo "--- Executando OLAF em $(date) ---" >> "$SCRIPT_DIR/olaf_runs.log"
 
 # Ativa o ambiente virtual
-source "$SCRIPT_DIR/venv/bin/activate"
+source ~/.virtualenvs/olaf/bin/activate
 
 # Executa o script OLAF e redireciona a saída e os erros para um arquivo de log
 python "$SCRIPT_DIR/src/main.py" local --path "$FOTOS_PATH" --extract-name >> "$SCRIPT_DIR/olaf_runs.log" 2>&1
