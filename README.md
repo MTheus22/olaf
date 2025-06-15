@@ -74,16 +74,6 @@ Use este modo para organizar fotos de uma pasta no seu computador (ex: uma pasta
 python src/main.py local --path "caminho/para/sua/pasta"
 ```
 
-**Exemplo Prático (Casamento):**
-
-```bash
-# Exemplo para WSL/Linux/macOS
-python src/main.py local --path "/mnt/c/Users/mathe/OneDrive/Casamento A&W - Registro dos Convidados"
-
-# Exemplo para Windows (CMD ou PowerShell)
-python src/main.py local --path "C:\Users\mathe\OneDrive\Casamento A&W - Registro dos Convidados"
-```
-
 ---
 
 ### **Modo Google Drive**
@@ -95,12 +85,6 @@ Use este modo para executar a funcionalidade original de baixar e processar arqu
 
 ```bash
 python src/main.py drive --folder-id "ID_DA_PASTA_NO_DRIVE" --credentials "caminho/para/credentials.json"
-```
-
-**Exemplo Prático (Igreja):**
-
-```bash
-python src/main.py drive --folder-id "1ND3a_bGo2FM6BlMXkxkEpEkJpnM8HyQ0" --credentials "config/service_account_credentials.json"
 ```
 
 ## Arquitetura do Projeto
