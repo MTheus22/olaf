@@ -1,7 +1,6 @@
 import os
 import re
 
-# Em src/main.py, substitua a função antiga por esta:
 
 def parse_photographer_name(filename: str) -> str | None:
     """

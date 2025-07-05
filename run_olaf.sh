@@ -6,13 +6,15 @@ set -e
 # Encontra o diretório onde o script está localizado
 SCRIPT_DIR=$(cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd)
 
-# Define o caminho para a pasta de fotos no formato WSL
-FOTOS_PATH="/mnt/c/Users/mathe/OneDrive - Instituto Brasileiro de Ensino, Desenvolvimento e Pesquisa (IDP)/Casamento A&W - Registro dos Convidados"
-
-echo "--- Executando OLAF em $(date) ---" >> "$SCRIPT_DIR/olaf_runs.log"
+# Log com a data de execução e o modo
+echo "--- Executando OLAF (modo Drive) em $(date) ---" >> "$SCRIPT_DIR/olaf_runs.log"
 
 # Ativa o ambiente virtual
+# Lembre-se de que este caminho deve corresponder à localização do seu ambiente
 source ~/.virtualenvs/olaf/bin/activate
 
-# Executa o script OLAF e redireciona a saída e os erros para um arquivo de log
-python "$SCRIPT_DIR/src/main.py" local --path "$FOTOS_PATH" --extract-name >> "$SCRIPT_DIR/olaf_runs.log" 2>&1
+# Executa o script OLAF no modo 'drive'.
+# As configurações são lidas do arquivo .env, então não são necessários argumentos de caminho ou ID.
+# A flag --extract-name foi mantida, mas é opcional.
+# A saída e os erros são redirecionados para um arquivo de log.
+python "$SCRIPT_DIR/src/main.py" drive --extract-name >> "$SCRIPT_DIR/olaf_runs.log" 2>&1
