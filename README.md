@@ -1,5 +1,3 @@
-Segue o conteúdo convertido para **Markdown**, pronto para uso no `README.md`:
-
 # OLAF - Otimizador de Logística de Arquivos de Fotografia
 
 ![Python Version](https://img.shields.io/badge/python-3.12+-blue.svg)

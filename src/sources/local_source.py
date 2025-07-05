@@ -12,10 +12,16 @@ class LocalSource(BaseSource):
         self.path = path
 
     def get_files(self) -> List[FileReference]:
+        """
+        Busca arquivos em uma pasta local e os retorna como referências.
+        """
         files = []
         for filename in os.listdir(self.path):
             full_path = os.path.join(self.path, filename)
             if os.path.isfile(full_path):
-                # Para arquivos locais, o 'id' é o próprio caminho completo.
-                files.append(FileReference(id=full_path, name=filename))
+                # Para arquivos locais, o 'remote_id' é None.
+                # O 'local_path' é o caminho completo.
+                files.append(
+                    FileReference(local_path=full_path, name=filename)
+                )
         return files

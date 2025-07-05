@@ -58,4 +58,35 @@ class GoogleDriveClient:
         while done is False:
             status, done = downloader.next_chunk()
             logging.info(f"Download {int(status.progress() * 100)}%.")
-        logging.info(f"Download concluído. Arquivo salvo em {destination_path}.") 
+        logging.info(f"Download concluído. Arquivo salvo em {destination_path}.")
+
+    def rename_file(self, file_id: str, new_name: str):
+        """
+        Renomeia um arquivo no Google Drive.
+
+        Esta operação altera apenas os metadados do arquivo (o nome) e não
+        requer o download ou upload do conteúdo do arquivo.
+
+        Args:
+            file_id: O ID do arquivo a ser renomeado.
+            new_name: O novo nome para o arquivo.
+
+        Raises:
+            Exception: Em caso de falha na comunicação com a API do Drive.
+        """
+        try:
+            # O corpo da requisição contém apenas os campos a serem atualizados.
+            body = {'name': new_name}
+            
+            # Chama o método 'update' da API para o arquivo especificado.
+            self.service.files().update(
+                fileId=file_id,
+                body=body
+            ).execute()
+
+            logging.info(f"Arquivo com ID {file_id} renomeado para '{new_name}' no Google Drive.")
+
+        except Exception as e:
+            logging.error(f"Falha ao renomear o arquivo com ID {file_id} no Google Drive: {e}")
+            # Propaga a exceção para que a lógica de chamada possa tratá-la.
+            raise e 

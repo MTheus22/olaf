@@ -1,8 +1,11 @@
 from typing import List
 from .base_source import BaseSource, FileReference
-from drive_service import GoogleDriveClient # Reutiliza sua classe original!
+# Importa o drive_service de uma forma que o Python entenda no contexto do main.py
+from drive_service import GoogleDriveClient
 import tempfile
 import os
+import logging
+import shutil
 
 class DriveSource(BaseSource):
     """
@@ -13,21 +16,37 @@ class DriveSource(BaseSource):
         self.folder_id = folder_id
         # Cria um diretório temporário para baixar os arquivos
         self.temp_dir = tempfile.mkdtemp(prefix="olaf_drive_")
+        logging.info(f"Diretório temporário para o Drive criado em: {self.temp_dir}")
 
     def get_files(self) -> List[FileReference]:
-        query = f"'{self.folder_id}' in parents"
-        drive_files = self.drive_client.list_files(query=query, page_size=1000) # Aumentar o limite
+        """
+        Baixa os arquivos do Drive para uma pasta local temporária e retorna
+        as referências, preservando o ID original do Drive.
+        """
+        query = f"'{self.folder_id}' in parents and trashed = false"
+        drive_files = self.drive_client.list_files(query=query, page_size=1000)
         
         local_files = []
         for drive_file in drive_files:
-            print(f"Baixando {drive_file['name']}...")
+            logging.info(f"Baixando '{drive_file['name']}' do Google Drive...")
             destination_path = os.path.join(self.temp_dir, drive_file['name'])
+            
             self.drive_client.download_file(drive_file['id'], destination_path)
-            local_files.append(FileReference(id=destination_path, name=drive_file['name']))
+            
+            # Populamos a FileReference com toda a informação necessária.
+            local_files.append(
+                FileReference(
+                    local_path=destination_path,
+                    name=drive_file['name'],
+                    remote_id=drive_file['id']  # <-- A INFORMAÇÃO CRÍTICA!
+                )
+            )
             
         return local_files
 
     def cleanup(self):
-        # Método para limpar os arquivos temporários após o uso
-        import shutil
+        """
+        Remove o diretório temporário e todo o seu conteúdo.
+        """
+        logging.info(f"Limpando diretório temporário: {self.temp_dir}")
         shutil.rmtree(self.temp_dir)
