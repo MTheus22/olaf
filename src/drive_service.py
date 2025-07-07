@@ -28,20 +28,27 @@ class GoogleDriveClient:
 
     def list_files(self, query: str = None, page_size: int = 10):
         """
-        Lista arquivos de acordo com a query especificada.
+        Lista arquivos de acordo com a query especificada, com suporte para
+        Drives Partilhados.
         
-        :param query: Query para filtrar os arquivos (exemplo: "'folder_id' in parents").
+        :param query: Query para filtrar os arquivos.
         :param page_size: Número máximo de arquivos a retornar.
-        :return: Lista de dicionários representando os arquivos encontrados.
+        :return: Lista de dicionários representando os arquivos.
         """
-
-        results = self.service.files().list(
-            q=query,
-            pageSize=page_size,
-            fields="nextPageToken, files(id, name, mimeType)"
-        ).execute()
-        files = results.get('files', [])
-        return files
+        try:
+            results = self.service.files().list(
+                q=query,
+                pageSize=page_size,
+                fields="nextPageToken, files(id, name, mimeType)",
+                supportsAllDrives=True,
+                includeItemsFromAllDrives=True
+            ).execute()
+            files = results.get('files', [])
+            return files
+        except Exception as e:
+            logging.error(f"Falha ao listar arquivos do Google Drive: {e}")
+            # Retorna uma lista vazia em caso de erro para não quebrar o fluxo
+            return []
     
     def download_file(self, file_id: str, destination_path: str):
         """

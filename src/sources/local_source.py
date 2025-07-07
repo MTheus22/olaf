@@ -19,8 +19,6 @@ class LocalSource(BaseSource):
         for filename in os.listdir(self.path):
             full_path = os.path.join(self.path, filename)
             if os.path.isfile(full_path):
-                # Para arquivos locais, o 'remote_id' é None.
-                # O 'local_path' é o caminho completo.
                 files.append(
                     FileReference(local_path=full_path, name=filename)
                 )
