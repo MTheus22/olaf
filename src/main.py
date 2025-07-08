@@ -10,61 +10,40 @@ import utils
 from sources.base_source import BaseSource
 from sources.local_source import LocalSource
 from sources.drive_source import DriveSource
-from raw_service import ExifMetadataExtractor
 from data_frame_service import DataFrameService
+from processing_service import (
+    BaseProcessor, ExifProcessor, ManualCorrectionProcessor
+)
 
-def process_files(source: BaseSource, args: argparse.Namespace):
+def process_files(source: BaseSource, processor: BaseProcessor, args: argparse.Namespace):
     """
-    Função de processamento de ponta a ponta: busca arquivos, extrai metadados,
-    ordena e os renomeia de acordo com a fonte (local ou remota).
+    Função de processamento de ponta a ponta que utiliza uma estratégia de
+    processamento (Processor) para preparar os dados antes de renomear.
 
     Args:
-        source: Uma instância de uma classe que herda de BaseSource (LocalSource ou DriveSource).
+        source: A fonte dos dados (LocalSource ou DriveSource).
+        processor: A estratégia de processamento a ser usada (ExifProcessor ou ManualCorrectionProcessor).
         args: Os argumentos parseados da linha de comando.
     """
     logging.info(f"Iniciando busca de arquivos da fonte: {source.__class__.__name__}")
     files = source.get_files()
 
-    RENAMED_FILE_PATTERN = re.compile(r'^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}')
-
     if not files:
         logging.warning("Nenhum arquivo encontrado na fonte especificada.")
         return
 
-    logging.info(f"Encontrados {len(files)} arquivos. Extraindo metadados...")
+    logging.info(f"Encontrados {len(files)} arquivos. Usando processador: {processor.__class__.__name__}")
     
-    photo_data = []
-    processed_count = 0
-    for file_ref in files:
-        if RENAMED_FILE_PATTERN.match(file_ref.name):
-            processed_count += 1
-            continue 
-
-        # O ExifMetadataExtractor agora usa o caminho local (mesmo que temporário)
-        extractor = ExifMetadataExtractor(file_ref.local_path)
-        create_date = extractor.extract_date("-CreateDate")
-        
-        if create_date:
-            photographer = utils.parse_photographer_name(file_ref.name) if args.extract_name else None
-            # Armazenamos todos os dados relevantes, incluindo o remote_id
-            photo_data.append({
-                'local_path': file_ref.local_path,
-                'remote_id': file_ref.remote_id,
-                'date': create_date,
-                'photographer': photographer
-            })
-
-    if processed_count > 0:
-        logging.info(f"Ignorados {processed_count} arquivos que já parecem ter sido renomeados.")
+    # Delegação da preparação dos dados para a estratégia escolhida
+    photo_data = processor.prepare_data(files, args)
 
     if not photo_data:
-        logging.warning("Nenhum arquivo novo para processar.")
-        # Garante a limpeza de arquivos temporários do Drive mesmo que nada seja renomeado
+        logging.warning("Nenhum arquivo novo para processar após a preparação dos dados.")
         if isinstance(source, DriveSource):
             source.cleanup()
         return
 
-    logging.info(f"Metadados extraídos de {len(photo_data)} novas fotos.")
+    logging.info(f"Dados preparados para {len(photo_data)} fotos.")
     
     df_service = DataFrameService(photo_data)
     df_sorted = df_service.prepare_and_sort()
@@ -115,86 +94,72 @@ def process_files(source: BaseSource, args: argparse.Namespace):
 def main():
     """Ponto de entrada principal da aplicação."""
     logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
-    
-    # Carrega as variáveis de ambiente do arquivo .env
     load_dotenv()
 
-    parser = argparse.ArgumentParser(
-        description="OLAF - Otimizador de Logística de Arquivos de Fotografia."
-    )
-    subparsers = parser.add_subparsers(
-        dest='command',
-        required=True,
-        help="Comando a ser executado"
-    )
+    parser = argparse.ArgumentParser(description="OLAF - Otimizador de Logística de Arquivos de Fotografia.")
+    action_subparsers = parser.add_subparsers(dest='action', required=True, help="Ação a ser executada")
 
-    # --- Comando para processar pasta local ---
-    parser_local = subparsers.add_parser(
-        'local',
-        help='Processa fotos de uma pasta local.'
-    )
-    parser_local.add_argument(
-        '--path',
-        # Não é mais obrigatório na CLI
-        help='Caminho para a pasta com as fotos. Pode ser definido via LOCAL_PHOTOS_PATH no .env'
-    )
-    parser_local.add_argument(
-        '--extract-name',
-        action='store_true',
-        help='Ativa a extração do nome do fotógrafo a partir do nome do arquivo.'
-    )
-
-    # --- Comando para processar do Google Drive ---
-    parser_drive = subparsers.add_parser(
-        'drive',
-        help='Processa fotos de uma pasta no Google Drive.'
-    )
-    parser_drive.add_argument(
-        '--folder-id',
-        # Não é mais obrigatório na CLI
-        help='ID da pasta no Google Drive. Pode ser definido via GDRIVE_FOLDER_ID no .env'
-    )
-    parser_drive.add_argument(
-        '--credentials',
-        # Não é mais obrigatório na CLI
-        help='Caminho para o credentials.json. Pode ser definido via GDRIVE_CREDENTIALS_PATH no .env'
-    )
-
-    parser_drive.add_argument(
-        '--extract-name',
-        action='store_true',
-        help='Ativa a extração do nome do fotógrafo a partir do nome do arquivo.'
-    )
+    # --- Ação 1: Processamento Padrão ---
+    parser_process = action_subparsers.add_parser('process', help='Renomeia arquivos com base na data EXIF original.')
+    source_process_subparsers = parser_process.add_subparsers(dest='source', required=True, help="Fonte dos arquivos")
     
+    # Processamento > Fonte Local
+    parser_process_local = source_process_subparsers.add_parser('local', help='Fonte: pasta local.')
+    parser_process_local.add_argument('--path', help='Caminho para a pasta. Usa LOCAL_PHOTOS_PATH do .env se não for especificado.')
+    parser_process_local.add_argument('--extract-name', action='store_true', help='Extrai o nome do fotógrafo do nome do arquivo.')
+
+    # Processamento > Fonte Drive
+    parser_process_drive = source_process_subparsers.add_parser('drive', help='Fonte: Google Drive.')
+    parser_process_drive.add_argument('--folder-id', help='ID da pasta. Usa GDRIVE_FOLDER_ID do .env.')
+    parser_process_drive.add_argument('--credentials', help='Caminho para credentials.json. Usa GDRIVE_CREDENTIALS_PATH do .env.')
+    parser_process_drive.add_argument('--extract-name', action='store_true', help='Extrai o nome do fotógrafo do nome do arquivo.')
+
+    # --- Ação 2: Correção Manual de Data ---
+    parser_fixdate = action_subparsers.add_parser('fixdate', help='Renomeia arquivos usando uma data base e um offset de horário.')
+    source_fixdate_subparsers = parser_fixdate.add_subparsers(dest='source', required=True, help="Fonte dos arquivos")
+    
+    # Fixdate > Fonte Local
+    parser_fixdate_local = source_fixdate_subparsers.add_parser('local', help='Fonte: pasta local.')
+    parser_fixdate_local.add_argument('--path', help='Caminho para a pasta.')
+    parser_fixdate_local.add_argument('--date', required=True, help='Data base no formato AAAA-MM-DD.')
+    parser_fixdate_local.add_argument('--offset', required=True, help='Offset de horário (ex: "+2h", "-1h30m").')
+    parser_fixdate_local.add_argument('--extract-name', action='store_true', help='Extrai o nome do fotógrafo.')
+    
+    # Fixdate > Fonte Drive
+    parser_fixdate_drive = source_fixdate_subparsers.add_parser('drive', help='Fonte: Google Drive.')
+    parser_fixdate_drive.add_argument('--folder-id', help='ID da pasta do Drive.')
+    parser_fixdate_drive.add_argument('--credentials', help='Caminho para as credenciais.')
+    parser_fixdate_drive.add_argument('--date', required=True, help='Data base no formato AAAA-MM-DD.')
+    parser_fixdate_drive.add_argument('--offset', required=True, help='Offset de horário (ex: "+2h", "-1h30m").')
+    parser_fixdate_drive.add_argument('--extract-name', action='store_true', help='Extrai o nome do fotógrafo.')
+
     args = parser.parse_args()
 
+    # --- Seleção da Estratégia e da Fonte ---
     source = None
-    if args.command == 'local':
-        # Prioriza o argumento da CLI, senão busca no .env
+    processor = None
+
+    if args.source == 'local':
         local_path = args.path or os.getenv('LOCAL_PHOTOS_PATH')
         if not local_path:
-            logging.error("Erro: O caminho da pasta local não foi especificado. "
-                          "Use --path ou defina LOCAL_PHOTOS_PATH no seu arquivo .env")
+            logging.error("Erro: Especifique o caminho com --path ou defina LOCAL_PHOTOS_PATH no .env")
             return
         source = LocalSource(path=local_path)
-
-    elif args.command == 'drive':
-        # Prioriza os argumentos da CLI, senão busca no .env
+    elif args.source == 'drive':
         folder_id = args.folder_id or os.getenv('GDRIVE_FOLDER_ID')
         credentials_path = args.credentials or os.getenv('GDRIVE_CREDENTIALS_PATH')
-        
         if not folder_id or not credentials_path:
-            logging.error("Erro: Para o modo drive, é necessário especificar o ID da pasta e o caminho das credenciais. "
-                          "Use --folder-id e --credentials ou defina GDRIVE_FOLDER_ID e GDRIVE_CREDENTIALS_PATH no seu arquivo .env")
+            logging.error("Erro: Especifique --folder-id e --credentials ou defina as variáveis no .env")
             return
-            
-        source = DriveSource(
-            credentials_path=credentials_path,
-            folder_id=folder_id
-        )
+        source = DriveSource(credentials_path=credentials_path, folder_id=folder_id)
 
-    if source:
-        process_files(source, args)
+    if args.action == 'process':
+        processor = ExifProcessor()
+    elif args.action == 'fixdate':
+        processor = ManualCorrectionProcessor(base_date_str=args.date, offset_str=args.offset)
+
+    if source and processor:
+        process_files(source, processor, args)
 
 if __name__ == '__main__':
     main()
